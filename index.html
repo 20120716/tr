@@ -1,60 +1,75 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>テトリス - ボタン操作版</title>
+    <title>テトリス - ゲームパッド版</title>
     <style>
-        body { background: #222; color: #fff; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0; overflow: hidden; }
-        .game-container { display: flex; align-items: flex-start; gap: 10px; margin-top: 10px; }
-        canvas { border: 3px solid #444; background-color: #000; width: 200px; height: 340px; }
-        #next-canvas { border: 2px solid #444; background-color: #000; width: 60px; height: 60px; }
-        .side-panel { text-align: left; background: #333; padding: 10px; border-radius: 8px; }
-        .info { margin-top: 5px; font-size: 1rem; font-weight: bold; color: #0f0; }
+        body { background: #1a1a1a; color: #fff; text-align: center; font-family: sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
+        .game-container { display: flex; justify-content: center; align-items: flex-start; gap: 10px; margin-top: 10px; }
+        canvas { border: 2px solid #555; background: #000; width: 180px; height: 300px; }
+        #next-canvas { border: 1px solid #555; background: #000; width: 50px; height: 50px; }
+        .side-panel { background: #333; padding: 10px; border-radius: 8px; font-size: 0.8rem; }
+        .score-val { color: #0f0; font-size: 1.2rem; font-weight: bold; }
 
-        /* 操作ボタンのスタイル */
-        .controls { margin-top: 15px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 90%; max-width: 300px; }
-        .btn { 
-            background: #555; border: none; color: #fff; padding: 15px 0; border-radius: 8px; 
-            font-weight: bold; font-size: 1.2rem; touch-action: manipulation; 
-            user-select: none; -webkit-user-select: none;
+        /* ゲームパッド配置 */
+        .controls { 
+            position: fixed; bottom: 20px; width: 100%; max-width: 400px;
+            display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box;
         }
-        .btn:active { background: #888; transform: scale(0.95); }
-        .btn-double { grid-column: span 2; }
-        .btn-rotate { background: #007bff; }
-        .btn-hard { background: #dc3545; }
+        .d-pad, .action-btns { display: grid; gap: 8px; }
+        .d-pad { grid-template-columns: repeat(3, 1fr); }
+        .action-btns { grid-template-columns: repeat(2, 1fr); }
+
+        .btn { 
+            background: #444; border: none; color: #fff; width: 55px; height: 55px; 
+            border-radius: 50%; font-weight: bold; font-size: 1.2rem;
+            box-shadow: 0 4px #222; touch-action: manipulation;
+        }
+        .btn:active { transform: translateY(3px); box-shadow: 0 1px #222; background: #666; }
+        
+        /* 特定のボタン色 */
+        .btn-up { background: #e91e63; } /* ハードドロップ */
+        .btn-rotate { background: #2196f3; } /* 回転 */
+        .empty { visibility: hidden; }
     </style>
 </head>
 <body>
-    <h2 style="margin: 5px 0;">TETRIS</h2>
     <div class="game-container">
         <canvas id="tetris" width="240" height="400"></canvas>
         <div class="side-panel">
-            <p style="margin:0; font-size: 0.7rem;">NEXT</p>
+            <p style="margin:0;">NEXT</p>
             <canvas id="next-canvas" width="80" height="80"></canvas>
-            <div class="info">SCORE<br><span id="score">0</span></div>
+            <p>SCORE<br><span class="score-val" id="score">0</span></p>
         </div>
     </div>
 
     <div class="controls">
-        <button class="btn btn-rotate" onmousedown="playerRotate(-1)" ontouchstart="playerRotate(-1)">Q</button>
-        <button class="btn btn-hard" onmousedown="playerHardDrop()" ontouchstart="playerHardDrop()">↑</button>
-        <button class="btn btn-rotate" onmousedown="playerRotate(1)" ontouchstart="playerRotate(1)">W</button>
-        <button class="btn" onmousedown="playerMove(-1)" ontouchstart="playerMove(-1)">←</button>
-        <button class="btn" onmousedown="playerDrop()" ontouchstart="playerDrop()">↓</button>
-        <button class="btn" onmousedown="playerMove(1)" ontouchstart="playerMove(1)">→</button>
+        <div class="d-pad">
+            <div class="empty"></div>
+            <button class="btn btn-up" onmousedown="playerHardDrop()" ontouchstart="playerHardDrop()">↑</button>
+            <div class="empty"></div>
+            <button class="btn" onmousedown="playerMove(-1)" ontouchstart="playerMove(-1)">←</button>
+            <button class="btn" onmousedown="playerDrop()" ontouchstart="playerDrop()">↓</button>
+            <button class="btn" onmousedown="playerMove(1)" ontouchstart="playerMove(1)">→</button>
+        </div>
+
+        <div class="action-btns">
+            <button class="btn btn-rotate" onmousedown="playerRotate(-1)" ontouchstart="playerRotate(-1)">Q</button>
+            <button class="btn btn-rotate" onmousedown="playerRotate(1)" ontouchstart="playerRotate(1)">W</button>
+        </div>
     </div>
 
     <script>
+        // --- 基本ロジック（変更なし） ---
         const canvas = document.getElementById('tetris');
         const context = canvas.getContext('2d');
         const nextCanvas = document.getElementById('next-canvas');
         const nextContext = nextCanvas.getContext('2d');
         const scoreElement = document.getElementById('score');
-
         context.scale(20, 20);
         nextContext.scale(20, 20);
-
         const colors = [null, '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF', '#FF8E0D', '#FFE138', '#3877FF'];
 
         function createMatrix(w, h) {
@@ -62,7 +77,6 @@
             while (h--) matrix.push(new Array(w).fill(0));
             return matrix;
         }
-
         function createPiece(type) {
             if (type === 'I') return [[0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0]];
             if (type === 'L') return [[0, 2, 0], [0, 2, 0], [0, 2, 2]];
@@ -72,7 +86,6 @@
             if (type === 'S') return [[0, 6, 6], [6, 6, 0], [0, 0, 0]];
             if (type === 'T') return [[0, 7, 0], [7, 7, 7], [0, 0, 0]];
         }
-
         function draw() {
             context.fillStyle = '#000';
             context.fillRect(0, 0, canvas.width, canvas.height);
@@ -82,7 +95,6 @@
             nextContext.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
             drawMatrix(player.next, {x: 1, y: 1}, nextContext);
         }
-
         function drawMatrix(matrix, offset, ctx) {
             matrix.forEach((row, y) => {
                 row.forEach((value, x) => {
@@ -96,7 +108,6 @@
                 });
             });
         }
-
         function collide(arena, player) {
             const [m, o] = [player.matrix, player.pos];
             for (let y = 0; y < m.length; ++y) {
@@ -106,7 +117,6 @@
             }
             return false;
         }
-
         function merge(arena, player) {
             player.matrix.forEach((row, y) => {
                 row.forEach((value, x) => {
@@ -114,7 +124,6 @@
                 });
             });
         }
-
         function rotate(matrix, dir) {
             for (let y = 0; y < matrix.length; ++y) {
                 for (let x = 0; x < y; ++x) [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
@@ -122,7 +131,6 @@
             if (dir > 0) matrix.forEach(row => row.reverse());
             else matrix.reverse();
         }
-
         function arenaSweep() {
             let rowCount = 1;
             outer: for (let y = arena.length - 1; y >= 0; --y) {
@@ -137,7 +145,6 @@
             }
             updateScore();
         }
-
         function playerReset() {
             const pieces = 'ILJOTSZ';
             if (!player.next) player.next = createPiece(pieces[pieces.length * Math.random() | 0]);
@@ -151,7 +158,6 @@
                 updateScore();
             }
         }
-
         function playerDrop() {
             player.pos.y++;
             if (collide(arena, player)) {
@@ -162,7 +168,6 @@
             }
             dropCounter = 0;
         }
-
         function playerHardDrop() {
             while (!collide(arena, player)) player.pos.y++;
             player.pos.y--;
@@ -171,12 +176,10 @@
             arenaSweep();
             dropCounter = 0;
         }
-
         function playerMove(dir) {
             player.pos.x += dir;
             if (collide(arena, player)) player.pos.x -= dir;
         }
-
         function playerRotate(dir) {
             const pos = player.pos.x;
             let offset = 1;
@@ -191,7 +194,6 @@
                 }
             }
         }
-
         function updateScore() {
             scoreElement.innerText = player.score;
         }
@@ -217,7 +219,6 @@
             draw();
             requestAnimationFrame(update);
         }
-
         const arena = createMatrix(12, 20);
         const player = { pos: {x: 0, y: 0}, matrix: null, next: null, score: 0 };
         playerReset();
