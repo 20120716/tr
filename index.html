@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>テトリス - ゲームパッド版</title>
+    <title>テトリス - 動作修正版</title>
     <style>
         body { background: #1a1a1a; color: #fff; text-align: center; font-family: sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
         .game-container { display: flex; justify-content: center; align-items: flex-start; gap: 10px; margin-top: 10px; }
@@ -13,25 +13,24 @@
         .side-panel { background: #333; padding: 10px; border-radius: 8px; font-size: 0.8rem; }
         .score-val { color: #0f0; font-size: 1.2rem; font-weight: bold; }
 
-        /* ゲームパッド配置 */
         .controls { 
-            position: fixed; bottom: 20px; width: 100%; max-width: 400px;
+            position: fixed; bottom: 30px; width: 100%; max-width: 400px;
             display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box;
         }
-        .d-pad, .action-btns { display: grid; gap: 8px; }
+        .d-pad, .action-btns { display: grid; gap: 12px; }
         .d-pad { grid-template-columns: repeat(3, 1fr); }
         .action-btns { grid-template-columns: repeat(2, 1fr); }
 
         .btn { 
-            background: #444; border: none; color: #fff; width: 55px; height: 55px; 
+            background: #444; border: none; color: #fff; width: 60px; height: 60px; 
             border-radius: 50%; font-weight: bold; font-size: 1.2rem;
-            box-shadow: 0 4px #222; touch-action: manipulation;
+            box-shadow: 0 4px #222; touch-action: none;
+            display: flex; align-items: center; justify-content: center;
         }
-        .btn:active { transform: translateY(3px); box-shadow: 0 1px #222; background: #666; }
+        .btn:active { transform: translateY(2px); box-shadow: 0 2px #222; background: #666; }
         
-        /* 特定のボタン色 */
-        .btn-up { background: #e91e63; } /* ハードドロップ */
-        .btn-rotate { background: #2196f3; } /* 回転 */
+        .btn-up { background: #e91e63; }
+        .btn-rotate { background: #2196f3; }
         .empty { visibility: hidden; }
     </style>
 </head>
@@ -48,21 +47,20 @@
     <div class="controls">
         <div class="d-pad">
             <div class="empty"></div>
-            <button class="btn btn-up" onmousedown="playerHardDrop()" ontouchstart="playerHardDrop()">↑</button>
+            <button class="btn btn-up" id="btn-up">↑</button>
             <div class="empty"></div>
-            <button class="btn" onmousedown="playerMove(-1)" ontouchstart="playerMove(-1)">←</button>
-            <button class="btn" onmousedown="playerDrop()" ontouchstart="playerDrop()">↓</button>
-            <button class="btn" onmousedown="playerMove(1)" ontouchstart="playerMove(1)">→</button>
+            <button class="btn" id="btn-left">←</button>
+            <button class="btn" id="btn-down">↓</button>
+            <button class="btn" id="btn-right">→</button>
         </div>
-
         <div class="action-btns">
-            <button class="btn btn-rotate" onmousedown="playerRotate(-1)" ontouchstart="playerRotate(-1)">Q</button>
-            <button class="btn btn-rotate" onmousedown="playerRotate(1)" ontouchstart="playerRotate(1)">W</button>
+            <button class="btn btn-rotate" id="btn-q">Q</button>
+            <button class="btn btn-rotate" id="btn-w">W</button>
         </div>
     </div>
 
     <script>
-        // --- 基本ロジック（変更なし） ---
+        // --- ロジック部分はそのまま ---
         const canvas = document.getElementById('tetris');
         const context = canvas.getContext('2d');
         const nextCanvas = document.getElementById('next-canvas');
@@ -197,6 +195,23 @@
         function updateScore() {
             scoreElement.innerText = player.score;
         }
+
+        // --- 二重反応防止のためのボタンイベント設定 ---
+        const handleAction = (id, action) => {
+            const el = document.getElementById(id);
+            // pointerdownならマウスもタッチも一括でOK（二重反応しにくい）
+            el.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                action();
+            });
+        };
+
+        handleAction('btn-up', playerHardDrop);
+        handleAction('btn-left', () => playerMove(-1));
+        handleAction('btn-right', () => playerMove(1));
+        handleAction('btn-down', playerDrop);
+        handleAction('btn-q', () => playerRotate(-1));
+        handleAction('btn-w', () => playerRotate(1));
 
         document.addEventListener('keydown', event => {
             const key = event.key.toLowerCase();
