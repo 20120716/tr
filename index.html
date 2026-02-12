@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>テトリス - ホールド機能版</title>
+    <title>テトリス - 七種一巡版</title>
     <style>
         body { background: #1a1a1a; color: #fff; text-align: center; font-family: sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
         .game-container { display: flex; justify-content: center; align-items: flex-start; gap: 10px; margin-top: 10px; }
@@ -11,26 +11,15 @@
         #next-canvas, #hold-canvas { border: 1px solid #555; background: #000; width: 50px; height: 50px; }
         .side-panel { background: #333; padding: 10px; border-radius: 8px; font-size: 0.8rem; display: flex; flex-direction: column; gap: 10px; }
         .score-val { color: #0f0; font-size: 1.2rem; font-weight: bold; }
-
-        .controls { 
-            position: fixed; bottom: 30px; width: 100%; max-width: 440px;
-            display: flex; justify-content: space-between; padding: 0 10px; box-sizing: border-box;
-        }
+        .controls { position: fixed; bottom: 30px; width: 100%; max-width: 440px; display: flex; justify-content: space-between; padding: 0 10px; box-sizing: border-box; }
         .d-pad, .action-btns { display: grid; gap: 10px; }
         .d-pad { grid-template-columns: repeat(3, 1fr); }
         .action-btns { grid-template-columns: repeat(3, 1fr); }
-
-        .btn { 
-            background: #444; border: none; color: #fff; width: 55px; height: 55px; 
-            border-radius: 50%; font-weight: bold; font-size: 1.1rem;
-            box-shadow: 0 4px #222; touch-action: none;
-            display: flex; align-items: center; justify-content: center;
-        }
+        .btn { background: #444; border: none; color: #fff; width: 55px; height: 55px; border-radius: 50%; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px #222; touch-action: none; display: flex; align-items: center; justify-content: center; }
         .btn:active { transform: translateY(2px); box-shadow: 0 2px #222; background: #666; }
-        
         .btn-up { background: #e91e63; }
         .btn-rotate { background: #2196f3; }
-        .btn-hold { background: #ff9800; } /* オレンジ色のホールドボタン */
+        .btn-hold { background: #ff9800; }
         .empty { visibility: hidden; }
     </style>
 </head>
@@ -78,11 +67,26 @@
         holdContext.scale(20, 20);
 
         const colors = [null, '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF', '#FF8E0D', '#FFE138', '#3877FF'];
+        const arena = createMatrix(12, 20);
+        const player = { pos: {x: 0, y: 0}, matrix: null, next: null, hold: null, canHold: true, score: 0, bag: [] };
 
         function createMatrix(w, h) {
             const matrix = [];
             while (h--) matrix.push(new Array(w).fill(0));
             return matrix;
+        }
+
+        // --- 七種一巡（7-Bag）ロジック ---
+        function getNextPiece() {
+            if (player.bag.length === 0) {
+                player.bag = ['I', 'J', 'L', 'O', 'S', 'T', 'Z'];
+                // シャッフル
+                for (let i = player.bag.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [player.bag[i], player.bag[j]] = [player.bag[j], player.bag[i]];
+                }
+            }
+            return createPiece(player.bag.pop());
         }
 
         function createPiece(type) {
@@ -95,21 +99,49 @@
             if (type === 'T') return [[0, 7, 0], [7, 7, 7], [0, 0, 0]];
         }
 
+        function playerReset() {
+            if (!player.next) player.next = getNextPiece();
+            player.matrix = player.next;
+            player.next = getNextPiece();
+            player.pos.y = 0;
+            player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
+            player.canHold = true;
+            if (collide(arena, player)) {
+                arena.forEach(row => row.fill(0));
+                player.score = 0;
+                player.hold = null;
+                player.bag = [];
+                updateScore();
+            }
+        }
+
+        function playerHold() {
+            if (!player.canHold) return;
+            if (!player.hold) {
+                player.hold = player.matrix;
+                playerReset();
+            } else {
+                const temp = player.matrix;
+                player.matrix = player.hold;
+                player.hold = temp;
+                player.pos.y = 0;
+                player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
+            }
+            player.canHold = false;
+        }
+
+        // --- 以下、描画・衝突・操作ロジックは前回同様 ---
         function draw() {
             context.fillStyle = '#000';
             context.fillRect(0, 0, canvas.width, canvas.height);
             drawMatrix(arena, {x: 0, y: 0}, context);
             drawMatrix(player.matrix, player.pos, context);
-
             nextContext.fillStyle = '#000';
             nextContext.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
             drawMatrix(player.next, {x: 1, y: 1}, nextContext);
-
             holdContext.fillStyle = '#000';
             holdContext.fillRect(0, 0, holdCanvas.width, holdCanvas.height);
-            if (player.hold) {
-                drawMatrix(player.hold, {x: 1, y: 1}, holdContext);
-            }
+            if (player.hold) drawMatrix(player.hold, {x: 1, y: 1}, holdContext);
         }
 
         function drawMatrix(matrix, offset, ctx) {
@@ -165,39 +197,6 @@
                 rowCount *= 2;
             }
             updateScore();
-        }
-
-        function playerReset() {
-            const pieces = 'ILJOTSZ';
-            if (!player.next) player.next = createPiece(pieces[pieces.length * Math.random() | 0]);
-            player.matrix = player.next;
-            player.next = createPiece(pieces[pieces.length * Math.random() | 0]);
-            player.pos.y = 0;
-            player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
-            player.canHold = true; // 新しいブロックになったらホールド可能
-            if (collide(arena, player)) {
-                arena.forEach(row => row.fill(0));
-                player.score = 0;
-                player.hold = null;
-                updateScore();
-            }
-        }
-
-        function playerHold() {
-            if (!player.canHold) return;
-            
-            if (!player.hold) {
-                player.hold = player.matrix;
-                playerReset();
-            } else {
-                const temp = player.matrix;
-                player.matrix = player.hold;
-                player.hold = temp;
-                player.pos.y = 0;
-                player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
-            }
-            player.canHold = false; // 次に固定されるまでホールド禁止
-            dropCounter = 0;
         }
 
         function playerDrop() {
@@ -282,8 +281,6 @@
             requestAnimationFrame(update);
         }
 
-        const arena = createMatrix(12, 20);
-        const player = { pos: {x: 0, y: 0}, matrix: null, next: null, hold: null, canHold: true, score: 0 };
         playerReset();
         updateScore();
         update();
